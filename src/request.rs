@@ -79,13 +79,34 @@ pub struct System {
 
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct AudioPlayer {
+    #[serde(rename = "playerActivity")]
+    player_activity: PlayerActivity,
+    #[serde(flatten)]
+    details: Option<AudioPlayerDetails>,
+}
+
+#[derive(Serialize,Deserialize,Debug,Clone)]
+pub enum PlayerActivity {
+    #[serde(rename = "IDLE")]
+    Idle,
+    #[serde(rename = "PAUSED")]
+    Paused,
+    #[serde(rename = "PLAYING")]
+    Playing,
+    #[serde(rename = "BUFFER_UNDERRUN")]
+    BufferUnderrun,
+    #[serde(rename = "FINISHED")]
+    Finished,
+    #[serde(rename = "STOPPED")]
+    Stopped,
+}
+
+#[derive(Serialize,Deserialize,Debug,Clone)]
+pub struct AudioPlayerDetails {
     token: String,
     #[serde(rename = "offsetInMilliseconds")]
     offset_in_milliseconds: u64,
-    #[serde(rename = "playerActivity")]
-    player_activity: String
 }
-
 
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct Intent {
@@ -283,7 +304,7 @@ mod tests {
             Ok(req) => assert_eq!(req.locale(), Locale::AmericanEnglish),
             Err(e) => panic!(e.to_string())
         }
- 
+
     }
 
     #[test]
@@ -293,7 +314,7 @@ mod tests {
             Ok(req) => assert!(req.locale().is_english()),
             Err(e) => panic!(e.to_string())
         }
- 
+
     }
 
     #[test]
@@ -303,7 +324,7 @@ mod tests {
             Ok(req) => assert_eq!(req.intent(),IntentType::User(String::from("hello"))),
             Err(e) => panic!(e.to_string())
         }
- 
+
     }
 
     #[test]
@@ -325,7 +346,7 @@ mod tests {
             },
             Err(e) => panic!(e.to_string())
         }
- 
+
     }
 
     #[test]
@@ -335,7 +356,7 @@ mod tests {
             Ok(req) => assert_eq!(req.attribute_value("lastSpeech"), Some(&String::from("Jupiter has the shortest day of all the planets"))),
             Err(e) => panic!(e.to_string())
         }
- 
+
     }
 
 
