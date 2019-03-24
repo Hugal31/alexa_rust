@@ -27,6 +27,7 @@ impl Response {
             version: Version::V1_0.to_string(),
             session_attributes: None,
             body: ResBody {
+                directives: vec![],
                 output_speech: None,
                 card: None,
                 reprompt: None,
@@ -58,9 +59,19 @@ impl Response {
         self
     }
 
+    pub fn reprompt(mut self, speech: Speech) -> Self {
+        self.body.reprompt = Some(Reprompt::new(speech));
+        self
+    }
+
     /// adds a card to the response
     pub fn card(mut self, card: Card) -> Self {
         self.body.card = Some(card);
+        self
+    }
+
+    pub fn directive(mut self, directive: Directive) -> Self {
+        self.body.directives.push(directive);
         self
     }
 
@@ -91,6 +102,8 @@ pub struct Response {
 
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct ResBody {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    directives: Vec<Directive>,
     #[serde(rename = "outputSpeech")]
     #[serde(skip_serializing_if = "Option::is_none")]
     output_speech: Option<Speech>,
@@ -100,6 +113,69 @@ pub struct ResBody {
     reprompt: Option<Reprompt>,
     #[serde(rename = "shouldEndSession")]
     should_end_session: bool,
+}
+
+#[derive(Serialize,Deserialize,Debug,Clone)]
+#[serde(tag = "type")]
+pub enum Directive {
+    #[serde(rename = "AudioPlayer.Play")]
+    AudioPlayerPlay {
+        #[serde(rename = "playBehavior")]
+        play_behavior: PlayBehavior,
+        #[serde(rename = "audioItem")]
+        audio_item: AudioItem,
+    },
+    #[serde(rename = "AudioPlayer.STOP")]
+    AudioPlayerStop{},
+}
+
+impl Directive {
+    pub fn play_audio(url: impl Into<String>,
+                      token: impl Into<String>,
+                      play_behavior: PlayBehavior) -> Self
+    {
+        Directive::AudioPlayerPlay {
+            play_behavior,
+            audio_item: AudioItem {
+                stream: AudioItemStream {
+                    url: url.into(),
+                    token: token.into(),
+                    expected_previous_token: None,
+                    offset_in_milliseconds: 0,
+                }
+            }
+        }
+    }
+
+    pub fn stop_audio() -> Self {
+        Directive::AudioPlayerStop{}
+    }
+}
+
+#[derive(Serialize,Deserialize,Debug,Clone)]
+pub struct AudioItem {
+    stream: AudioItemStream,
+}
+
+#[derive(Serialize,Deserialize,Debug,Clone)]
+pub struct AudioItemStream {
+    url: String,
+    token: String,
+    #[serde(rename = "expectedPreviousToken", skip_serializing_if = "Option::is_none")]
+    expected_previous_token: Option<String>,
+    // TODO Make duration
+    #[serde(rename = "offsetInMilliseconds")]
+    offset_in_milliseconds: u32,
+}
+
+#[derive(Serialize,Deserialize,Debug,Clone)]
+pub enum PlayBehavior {
+    #[serde(rename = "ENQUEUE")]
+    Enqueue,
+    #[serde(rename = "REPLACE_ALL")]
+    ReplaceAll,
+    #[serde(rename = "REPLACE_ENQUEUED")]
+    ReplaceEnqueued,
 }
 
 enum SpeechType {
@@ -117,25 +193,6 @@ impl fmt::Display for SpeechType {
     }
 }
 
-/// Play behavior for output speech
-pub enum PlayBehavior {
-    Enqueue,
-    ReplaceAll,
-    ReplaceEnqueued
-}
-
-impl fmt::Display for PlayBehavior {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let s = match *self {
-            PlayBehavior::Enqueue         => "ENQUEUE",
-            PlayBehavior::ReplaceAll      => "REPLACE_ALL",
-            PlayBehavior::ReplaceEnqueued => "REPLACE_ENQUEUED",
-        };
-        write!(f,"{}",s)
-    }
-}
-
-
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct Speech {
     #[serde(rename = "type")]
@@ -146,7 +203,7 @@ pub struct Speech {
     ssml: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "playBehavior")]
-    play_behavior: Option<String>
+    play_behavior: Option<PlayBehavior>
 }
 
 impl Speech {
@@ -173,7 +230,7 @@ impl Speech {
 
     /// Adds play behavior to a speech object
     pub fn play_behavior(&mut self, behavior: PlayBehavior) {
-        self.play_behavior = Some(behavior.to_string());
+        self.play_behavior = Some(behavior);
     }
 }
 
@@ -272,6 +329,14 @@ pub struct Reprompt {
     output_speech: Speech,
 }
 
+impl Reprompt {
+    pub fn new(output_speech: Speech) -> Self {
+        Reprompt {
+            output_speech,
+        }
+    }
+}
+
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct Image {
     #[serde(rename = "smallImageUrl")]
@@ -290,7 +355,7 @@ mod tests {
     #[test]
     fn test_version() {
         let r = Response::simple("hello, world", "hello, dude");
-        assert_eq!(r.version, "1.0")  ; 
+        assert_eq!(r.version, "1.0")  ;
     }
 
     #[test]
@@ -315,7 +380,7 @@ mod tests {
         let t = "hello, world";
         let r = Response::simple(t, "hello, dude");
 
-        assert_eq!(r.body.card.unwrap().title.unwrap(), t); 
+        assert_eq!(r.body.card.unwrap().title.unwrap(), t);
     }
 
     #[test]
@@ -323,7 +388,7 @@ mod tests {
         let t = "hello, dude";
         let r = Response::simple("hello,world", t);
 
-        assert_eq!(r.body.card.unwrap().content.unwrap(), t); 
+        assert_eq!(r.body.card.unwrap().content.unwrap(), t);
     }
 
     #[test]

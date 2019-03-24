@@ -9,11 +9,11 @@ use std::collections::HashMap;
 /// Request struct corresponding to the [Alexa spec](https://developer.amazon.com/docs/custom-skills/request-and-response-json-reference.html#request-body-parameters)
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct Request {
-	version: String,
-	session: Option<Session>,
+    version: String,
+    session: Option<Session>,
     #[serde(rename = "request")]
-	body: ReqBody,
-	context: Context
+    body: ReqBody,
+    context: Context
 }
 
 #[derive(Serialize,Deserialize,Debug,Clone)]
