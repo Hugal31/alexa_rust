@@ -69,6 +69,12 @@ pub struct Context {
     audio_player: Option<AudioPlayer>,
 }
 
+impl Context {
+    pub fn audio_player(&self) -> Option<&AudioPlayer> {
+        self.audio_player.as_ref()
+    }
+}
+
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct System {
     #[serde(rename = "apiAccessToken")]
@@ -85,7 +91,17 @@ pub struct AudioPlayer {
     details: Option<AudioPlayerDetails>,
 }
 
-#[derive(Serialize,Deserialize,Debug,Clone)]
+impl AudioPlayer {
+    pub fn activity(&self) -> PlayerActivity {
+        self.player_activity
+    }
+
+    pub fn details(&self) -> Option<&AudioPlayerDetails> {
+        self.details.as_ref()
+    }
+}
+
+#[derive(Serialize,Deserialize,Debug,Clone,Copy,Eq,PartialEq)]
 pub enum PlayerActivity {
     #[serde(rename = "IDLE")]
     Idle,
@@ -234,6 +250,10 @@ impl From<String> for Locale {
 
 impl Request {
 
+    pub fn context(&self) -> &Context {
+        &self.context
+    }
+
     pub fn req_type(&self) -> &str {
         &self.body.reqtype
     }
@@ -363,6 +383,14 @@ mod tests {
 
     }
 
+    #[test]
+    fn test_audio_player() {
+        let req: Request = self::serde_json::from_str(default_req()).expect("Should parse");
+        let audio_player = req.context().audio_player().expect("Should not be None");
+        assert_eq!(audio_player.activity(), PlayerActivity::Idle);
+        assert!(audio_player.details().is_none());
+    }
+
 
     fn default_req () -> &'static str {
         r#"{
@@ -381,6 +409,9 @@ mod tests {
 		}
 	},
 	"context": {
+		"AudioPlayer": {
+			"playerActivity": "IDLE"
+		},
 		"System": {
 			"application": {
 				"applicationId": "amzn1.ask.skill.myappid"
@@ -443,6 +474,9 @@ mod tests {
 	},
 	"context": {
 		"Display": {},
+		"AudioPlayer": {
+			"playerActivity": "IDLE"
+		},
 		"System": {
 			"application": {
 				"applicationId": "amzn1.ask.skill.tehappz"
