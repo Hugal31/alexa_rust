@@ -234,6 +234,10 @@ impl From<String> for Locale {
 
 impl Request {
 
+    pub fn req_type(&self) -> &str {
+        &self.body.reqtype
+    }
+
     /// Extracts the locale from the request
     pub fn locale(&self) -> Locale {
         Locale::from(&*self.body.locale)
